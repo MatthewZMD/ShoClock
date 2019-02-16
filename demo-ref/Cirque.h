@@ -24,4 +24,4 @@ void * cirquePeek(const Cirque * queue);
 
 unsigned int cirqueGetCount(const Cirque * queue);
 
-void cirqueForEach(const Cirque * queue, cirqueForFn)
+void cirqueForEach(const Cirque * queue, cirqueForFn fun);
