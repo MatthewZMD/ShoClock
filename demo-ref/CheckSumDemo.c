@@ -4,5 +4,9 @@
 
 
 int main(){
+
+
+  const int len = 20;
+
   
 }
