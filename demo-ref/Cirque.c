@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include "Cirque.h"
 
 // create cirque
@@ -29,11 +30,11 @@ void cirqueDelete(Cirque * queue){
 }
 
 // resize cirque
-static void CirqueResize(Cirque * queue){
+static void cirqueResize(Cirque * queue){
   void ** tmp = malloc(queue->size * 2 * sizeof(void *));
   if(tmp){
     unsigned int i = 0;
-    ungisned int h = queue->head;
+    unsigned int h = queue->head;
     do{
       tmp[i] = queue->entries[h++];
       if(h == queue->size){
@@ -57,14 +58,20 @@ static unsigned int cirqueIsEmpty(const Cirque * queue){
 
 // insert data into cirque
 unsigned int cirqueInsert(Cirque * queue, void * data){
+  //  printf("Data being inserted  %s...\n",data);
   unsigned int result;
   if(queue->isFull){
+    //    printf("Full! Gonna resize now...\n");
     cirqueResize(queue);
     if(queue->isFull){
+      //  printf("Still full, result 0!\n");
       result = 0;
     }
-  }else{
+  }
+  if(!queue->isFull){
+    //    printf("Add data %s to %d! ",data,queue->tail);
     queue->entries[queue->tail++] = data;
+    //    printf("Queue tail becomes %d\n",queue->tail);
     if(queue->tail == queue->size){
       queue->tail = 0;
     }
@@ -77,7 +84,7 @@ unsigned int cirqueInsert(Cirque * queue, void * data){
 }
 
 // remove cirque
-void * ciqueRemove(Cirque * queue){
+void * cirqueRemove(Cirque * queue){
   void * data = NULL;
   if(!cirqueIsEmpty(queue)){
     if(queue->isFull){
@@ -121,11 +128,16 @@ unsigned int cirqueGetCount(const Cirque * queue){
 void cirqueForEach(const Cirque * queue, cirqueForFn fun){
   if(!cirqueIsEmpty(queue)){
     unsigned int h = queue->head;
+    int i = 0;
+    //printf("size%d\n",queue->size);
     do{
+      //      printf("h%d,%d: ",h,i);
       fun(queue->entries[h++]);
       if(h == queue->size){
         h = 0;
       }
+      ++i;
+      //      printf("\n");
     }while(h != queue->tail);
   }
 }

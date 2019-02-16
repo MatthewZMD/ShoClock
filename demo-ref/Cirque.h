@@ -18,7 +18,7 @@ void cirqueDelete(Cirque * queue);
 
 unsigned int cirqueInsert(Cirque * queue, void * data);
 
-void * ciqueRemove(Cirque * queue);
+void * cirqueRemove(Cirque * queue);
 
 void * cirquePeek(const Cirque * queue);
 
