@@ -21,6 +21,9 @@
 */
 
 #include "arduinoFFT.h"
+#include <Wire.h>
+#include <SPI.h>
+#include <Adafruit_PN532.h>
 
 arduinoFFT FFT = arduinoFFT(); /* Create FFT object */
 /*
@@ -47,11 +50,66 @@ double vI[samples];
 #define SCL_FREQUENCY 0x02
 #define SCL_PLOT 0x03
 
+// If using the breakout or shield with I2C, define just the pins connected
+// to the IRQ and reset lines.  Use the values below (2, 3) for the shield!
+#define PN532_IRQ   (2)
+#define PN532_RESET (3)  // Not connected by default on the NFC Shield
+
+// Uncomment just _one_ line below depending on how your breakout or shield
+// is connected to the Arduino:
+  
+// Use this line for a breakout with a SPI connection:
+//Adafruit_PN532 nfc(PN532_SCK, PN532_MISO, PN532_MOSI, PN532_SS);
+
+// Use this line for a breakout with a hardware SPI connection.  Note that
+// the PN532 SCK, MOSI, and MISO pins need to be connected to the Arduino's
+// hardware SPI SCK, MOSI, and MISO pins.  On an Arduino Uno these are
+// SCK = 13, MOSI = 11, MISO = 12.  The SS line can be any digital IO pin.
+//Adafruit_PN532 nfc(PN532_SS);
+
+// Or use this line for a breakout or shield with an I2C connection:
+Adafruit_PN532 nfc(PN532_IRQ, PN532_RESET);
+
+#if defined(ARDUINO_ARCH_SAMD)
+// for Zero, output on USB Serial console, remove line below if using programming port to program the Zero!
+// also change #define in Adafruit_PN532.cpp library file
+   #define Serial SerialUSB
+#endif
+
+
 const int outputPin = 9;
 int outputState = LOW;
 
 void setup()
 {
+  #ifndef ESP8266
+    while (!Serial); // for Leonardo/Micro/Zero
+  #endif
+
+  
+  nfc.begin();
+
+  uint32_t versiondata = nfc.getFirmwareVersion();
+  if (! versiondata) {
+    Serial.print("Didn't find PN53x board");
+    while (1); // halt
+  }
+  
+  // Got ok data, print it out!
+  Serial.print("Found chip PN5"); Serial.println((versiondata>>24) & 0xFF, HEX); 
+  Serial.print("Firmware ver. "); Serial.print((versiondata>>16) & 0xFF, DEC); 
+  Serial.print('.'); Serial.println((versiondata>>8) & 0xFF, DEC);
+  
+  // Set the max number of retry attempts to read from a card
+  // This prevents us from waiting forever for a card, which is
+  // the default behaviour of the PN532.
+  nfc.setPassiveActivationRetries(0xFF);
+  
+  // configure board to read RFID tags
+  nfc.SAMConfig();
+  
+  Serial.println("Waiting for an ISO14443A card");
+  
   pinMode(outputPin,OUTPUT);
   sampling_period_us = round(1000000*(1.0/samplingFrequency));
   Serial.begin(115200);
@@ -63,6 +121,14 @@ double x;
 int occupied = 0;
 
 double prevTime;
+
+uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };  // Buffer to store the returned UID
+uint8_t uidLength;        // Length of the UID (4 or 7 bytes depending on ISO14443A card type)
+
+bool success;
+
+bool started = false;
+
 
 void loop()
 {
@@ -103,21 +169,53 @@ void loop()
   x = FFT.MajorPeak(vR, samples, samplingFrequency);
   Serial.println(x, 6); //Print out what frequency is the most dominant.
   //while(1); /* Run Once */
-  delay(10); /* Repeat after delay */
+
+  //----------------NFC
+
+  if(started){
+    // Wait for an ISO14443A type cards (Mifare, etc.).  When one is found
+    // 'uid' will be populated with the UID, and uidLength will indicate
+    // if the uid is 4 bytes (Mifare Classic) or 7 bytes (Mifare Ultralight)
+    success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, &uid[0], &uidLength);
+  }
 
   //if triggers the electricity then
-  prevTime = millis();
-  trigger(20,1);
+  trigger();
   
 }
+void trigger(){
+    if(started){
+      if(success){
+        Serial.println("Found a card!");
+        Serial.print("UID Length: ");Serial.print(uidLength, DEC);Serial.println(" bytes");
+        Serial.print("UID Value: ");
+        for (uint8_t i=0; i < uidLength; i++) 
+        {
+          Serial.print(" 0x");Serial.print(uid[i], HEX); 
+        }
+        Serial.println("");
+        // Wait 1 second before continuing
+        delay(1000);
+        
+        started = false;
+      
+        outputState = LOW;
+      } else {
+        Serial.println("Failed to find card!");
+      }
+    }else{
+      // shock not started and need to start now
+      if(false){
+        prevTime = millis();
+        outputState = HIGH;
+        while(millis() - prevTime <= 50){
+        }
 
-void trigger(int frequency, int intensity){
-  if(outputState == LOW){
-    outputState = HIGH;
-  }else if(millis() - prevTime > intensity * 10.0 / frequency){
-    outputState = LOW;
-  }
-  digitalWrite(ledPin, ledState);
+        started = true;
+      }
+    }
+  
+  digitalWrite(outputPin, outputState);
 }
 
 
