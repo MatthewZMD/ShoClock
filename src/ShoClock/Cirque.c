@@ -4,7 +4,7 @@
 
 // create cirque
 Cirque * cirqueCreate(){
-  const unsigned int size = 4;
+  const unsigned int size = 64;
   Cirque * queue = malloc(sizeof(Cirque));
   if(queue){
     queue->entries = malloc(size * sizeof(double *));

@@ -51,7 +51,6 @@ const unsigned int limit = 64; // buffer limit
 double buf; // the double information that will be stored
 
 double analogReal;
-double imagTmp = 0;
 
 #define SCL_INDEX 0x00
 #define SCL_TIME 0x01
@@ -62,46 +61,6 @@ double imagTmp = 0;
 
 int allOccupied = 0;
 int f = 0;
-
-
-void ComputeFFTData() {
-  Serial.println("Printing stuff....");
-  delay(1000);
-  /* Print the results of the sampling according to time */
-  Serial.println("Data:");
-  //PrintVector(vReal->entries, limit, SCL_TIME);
-  FFT.Windowing(vReal->entries, limit, FFT_WIN_TYP_HAMMING, FFT_FORWARD);  /* Weigh data */
-  Serial.println("Weighed data:");
-  //PrintVector(vReal->entries, samples, SCL_TIME);
-  FFT.Compute(vReal->entries, vImag->entries, limit, FFT_FORWARD); /* Compute FFT */
-  Serial.println("Computed Real values:");
-  //  PrintVector(vReal, samples, SCL_INDEX);
-  Serial.println("Computed Imaginary values:");
-  //  PrintVector(vImag, samples, SCL_INDEX);
-  FFT.ComplexToMagnitude(vReal->entries, vImag->entries, limit); /* Compute magnitudes */
-  Serial.println("Computed magnitudes:");
-  //  PrintVector(vReal, (samples >> 1), SCL_FREQUENCY);
-
-  //Print Vectors
-
-  double abscissa;
-
-  //doesn't matter print from head, just print 0 to f
-  for (int i = 0; i < f; ++i) {
-    abscissa = ((i * 1.0 * samplingFrequency) / limit);
-
-    Serial.print(abscissa, 6);
-    Serial.print("Hz ");
-    Serial.println(vReal->entries[i], 4);
-    Serial.println();
-
-  }
-  double x = FFT.MajorPeak(vReal->entries, limit, samplingFrequency);
-  Serial.println(x, 6); //Print out what frequency is the most dominant.
-
-}
-
-//------------
 
 void setup() {
   Serial.begin(115200);
@@ -117,68 +76,80 @@ void setup() {
 
 void loop() {
   /*SAMPLING*/
-  //for(int i=0; i<samples; i++) {
   microseconds = micros();    //Overflows after around 70 minutes!
 
-  // if not all occupied but exceeds capacity limit
-  if (!allOccupied && f >= limit) {
-    allOccupied = 1;
-  }
-  // if not all occupied and doesn't exceed capacity limit!
-  if (!allOccupied && f < limit) {
-    ++f;
-  }
-
-  //if all occupied, remove oldest
-  if (allOccupied) {
+  if(!allOccupied){
+    // if not all occupied and doesn't exceed capacity limit!
+    while(f < limit){
+      //read from CHANNEL
+      analogReal = analogRead(CHANNEL);
+      Serial.print(analogReal);
+      Serial.print(" ");
+      
+      cirqueInsert(vReal, analogReal);
+      cirqueInsert(vImag, 0.0);
+      Serial.println(vReal->entries[f]);
+      ++f;
+      
+      // if exceeds capacity limit
+      if (f >= limit) {
+        allOccupied = 1;
+        Serial.println("All occupied");
+      }
+    }
+  }else{
+    //read from CHANNEL
+    analogReal = analogRead(CHANNEL);
+    Serial.print(analogReal);
+    Serial.print(" ");
+    Serial.println(cirquePeek(vReal));
+    //if all occupied, remove oldest
     cirqueRemove(vReal);
+    
+    cirqueInsert(vReal, analogReal);
+    cirqueInsert(vImag, 0.0);
+    
+    Serial.println("Inserted!");
+    ComputeFFTData();
   }
-  //Serial.println("Getting analog from channelA0");
-
-  //read from CHANNEL
-  analogReal = analogRead(CHANNEL);
-
-  Serial.println(analogReal);
-  //insert into vReal and vImag
-  //  vReal[i] = analogReal;
-
-  cirqueInsert(vReal, analogReal);
-  cirqueInsert(vImag, imagTmp);
-
-  Serial.println("Inserted!");
-  delay(100);
-  //noInterrupts();
-  ComputeFFTData();
-  //interrupts();
-  //while(1); /* Run Once */
-  delay(1000); /* Repeat after delay */
+  Serial.println("Loop end");
 }
 
 
+void ComputeFFTData() {
+  Serial.println("Printing stuff....");
+  /* Print the results of the sampling according to time */
+  Serial.println("Data:");
+  //PrintVector(vReal->entries, limit, SCL_TIME);
+  FFT.Windowing(vReal->entries, limit, FFT_WIN_TYP_HAMMING, FFT_FORWARD);  /* Weigh data */
+  Serial.println("Weighed data:");
+  //PrintVector(vReal->entries, samples, SCL_TIME);
+  FFT.Compute(vReal->entries, vImag->entries, limit, FFT_FORWARD); /* Compute FFT */
+  //  Serial.println("Computed Real values:");
+  //  PrintVector(vReal, samples, SCL_INDEX);
+  //Serial.println("Computed Imaginary values:");
+  //  PrintVector(vImag, samples, SCL_INDEX);
+//  FFT.ComplexToMagnitude(vReal->entries, vImag->entries, limit); /* Compute magnitudes */
+  Serial.println("Computed magnitudes:");
+  //  PrintVector(vReal, (samples >> 1), SCL_FREQUENCY);
 
-void PrintVector(double *vData, uint16_t bufferSize, uint8_t scaleType)
-{
-  for (uint16_t i = 0; i < bufferSize; i++)
-  {
-    double abscissa;
-    /* Print abscissa value */
-    switch (scaleType)
-    {
-      case SCL_INDEX:
-        abscissa = (i * 1.0);
-        break;
-      case SCL_TIME:
-        abscissa = ((i * 1.0) / samplingFrequency);
-        break;
-      case SCL_FREQUENCY:
-        abscissa = ((i * 1.0 * samplingFrequency) / limit);
-        break;
-    }
-    Serial.print(abscissa, 6);
-    if (scaleType == SCL_FREQUENCY)
-      Serial.print("Hz");
+  //Print Vectors
+
+  double abscissa;
+
+  //doesn't matter print from head, just print 0 to f
+  for (int i = 0; i < f; ++i) {
+    abscissa = ((i * 1.0 * samplingFrequency) / limit);
+
+    Serial.print(i);
     Serial.print(" ");
-    Serial.println(vData[i], 4);
+    Serial.print(abscissa, 6);
+    Serial.print("Hz ");
+    Serial.println(vReal->entries[i], 4);
+    Serial.println();
+
   }
-  Serial.println();
+  double x = FFT.MajorPeak(vReal->entries, limit, samplingFrequency);
+  Serial.println(x, 6); //Print out what frequency is the most dominant.
+
 }
