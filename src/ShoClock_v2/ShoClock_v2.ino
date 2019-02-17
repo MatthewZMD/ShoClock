@@ -27,8 +27,8 @@ arduinoFFT FFT = arduinoFFT(); /* Create FFT object */
 These values can be changed in order to evaluate the functions
 */
 #define CHANNEL A0
-const uint16_t samples = 128; //This value MUST ALWAYS be a power of 2
-const double samplingFrequency = 100; //Hz, must be less than 10000 due to ADC
+const uint16_t samples = 64; //This value MUST ALWAYS be a power of 2
+const double samplingFrequency = 500; //Hz, must be less than 10000 due to ADC
 
 unsigned int sampling_period_us;
 unsigned long microseconds;
@@ -47,8 +47,12 @@ double vI[samples];
 #define SCL_FREQUENCY 0x02
 #define SCL_PLOT 0x03
 
+const int outputPin = 9;
+int outputState = LOW;
+
 void setup()
 {
+  pinMode(outputPin,OUTPUT);
   sampling_period_us = round(1000000*(1.0/samplingFrequency));
   Serial.begin(115200);
   Serial.println("Ready");
@@ -57,6 +61,8 @@ void setup()
 double x;
 
 int occupied = 0;
+
+double prevTime;
 
 void loop()
 {
@@ -98,7 +104,23 @@ void loop()
   Serial.println(x, 6); //Print out what frequency is the most dominant.
   //while(1); /* Run Once */
   delay(10); /* Repeat after delay */
+
+  //if triggers the electricity then
+  prevTime = millis();
+  trigger(20,1);
+  
 }
+
+void trigger(int frequency, int intensity){
+  if(outputState == LOW){
+    outputState = HIGH;
+  }else if(millis() - prevTime > intensity * 10.0 / frequency){
+    outputState = LOW;
+  }
+  digitalWrite(ledPin, ledState);
+}
+
+
 
 void PrintVector(double *vData, uint16_t bufferSize, uint8_t scaleType)
 {
