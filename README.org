@@ -1,4 +1,5 @@
 #+TITLE: 2019 MakeUofT: Project ShoClock
+Meet ShoClock, your special morning alarm that gives you some bits of goosebumps!
 * Inspiration
   In our daily lives, there are numerous occations where people need to wake up early morning, either going to work or going to school. Although we could try our best to sleep earlier the night before, but sometimes it is very hard. Therefore we made this ShoClock with the hope that it will be useful to someone.
 * What it does
