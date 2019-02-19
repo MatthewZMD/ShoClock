@@ -7,9 +7,9 @@ Meet ShoClock, your special morning alarm that gives you some bits of goosebumps
 * Images
 ** Front
    [[./img/front.jpg]]
-** Left
-   [[./img/side1.jpg]]
 ** Right
+   [[./img/side1.jpg]]
+** Left
    [[./img/side2.jpg]]
 ** Back
    [[./img/back.jpg]]
