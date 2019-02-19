@@ -1,1 +1,14 @@
-#+TITLE: 2019 MakeUofT Project: ShoClock
+#+TITLE: 2019 MakeUofT Project - ShoClock
+* Inspiration
+  In our daily lives, there are numerous occations where people need to wake up early morning, either going to work or going to school. Although we could try our best to sleep earlier the night before, but sometimes it is very hard. Therefore we made this ShoClock with the hope that it will be useful to someone.
+* What it does
+  ShoClock is connected to bluetooth through your phone and able to listen alarm music, which will cause an electric shock within safe range of current human could tolerance. This shock will not stop until RFID component touches the equipment at the door, which could confirm that the user has waken up and moved from bed.
+* Images
+** Front
+   [[./img/front.jpg]]
+** Left
+   [[./img/side1.jpg]]
+** Right
+   [[./img/side2.jpg]]
+** Back
+   [[./img/back.jpg]]
