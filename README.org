@@ -1,4 +1,4 @@
-#+TITLE: 2019 MakeUofT: Project ShoClock
+#+TITLE: MakeUofT 2019: Project ShoClock
 Meet ShoClock, your special morning alarm that gives you some bits of goosebumps!
 * What is ShoClock
   ShoClock is a special watch that triggers to alarm music through bluetooth connection on your phone, which will cause an very tiny electric shock. This shock will not stop until RFID tag touches the surface. And this RIFD tag can be put anywhere in your preference, on your doorstep, or in the washroom, as a tool to confirm you are fully awake and moved out from your bed.
