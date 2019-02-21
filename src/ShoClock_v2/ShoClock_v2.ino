@@ -1,23 +1,6 @@
 /*
-
-  Example of use of the FFT libray to compute FFT for a signal sampled through the ADC.
-        Copyright (C) 2018 Enrique Condés and Ragnar Ranøyen Homb
-
-  This program is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-  This is largely influenced by Arduino FFT library FFT_03 example.
-  
+  @author: Mingde Zeng
+  @date: Feb 16, 2019
 */
 
 #include "arduinoFFT.h"
@@ -86,7 +69,6 @@ void setup()
     while (!Serial); // for Leonardo/Micro/Zero
   #endif
 
-  
   nfc.begin();
 
   uint32_t versiondata = nfc.getFirmwareVersion();
@@ -111,7 +93,13 @@ void setup()
   Serial.println("Waiting for an ISO14443A card");
   
   pinMode(outputPin,OUTPUT);
+
   sampling_period_us = round(1000000*(1.0/samplingFrequency));
+
+  for(int i = 0; i < samples; ++i){
+    vImag[i] = 0;
+  }
+  
   Serial.begin(115200);
   Serial.println("Ready");
 }
@@ -120,18 +108,16 @@ double x;
 
 int occupied = 0;
 
-double prevTime;
+unsigned long prevTime;
 
 uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };  // Buffer to store the returned UID
 uint8_t uidLength;        // Length of the UID (4 or 7 bytes depending on ISO14443A card type)
 
-bool success;
+bool success = false;
 
-bool started = false;
+//bool started = false;
 
-
-void loop()
-{
+void loop() {
   /*SAMPLING*/
   if(!occupied){
     for(int i=0; i<samples; i++) {
@@ -147,11 +133,12 @@ void loop()
     vImag[samples - 1] = 0;
   }
 
+  //copy from vReal to 
   for(int j = 0; j < samples; ++j){
     vR[j] = vReal[j];
     vI[j] = 0;
   }
-  
+
   /* Print the results of the sampling according to time */
   //Serial.println("Data:");
   //PrintVector(vR, samples, SCL_TIME);
@@ -172,52 +159,66 @@ void loop()
 
   //----------------NFC
 
-  if(started){
     // Wait for an ISO14443A type cards (Mifare, etc.).  When one is found
     // 'uid' will be populated with the UID, and uidLength will indicate
     // if the uid is 4 bytes (Mifare Classic) or 7 bytes (Mifare Ultralight)
-    success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, &uid[0], &uidLength);
-  }
+
 
   //if triggers the electricity then
   trigger();
   
 }
-void trigger(){
-    if(started){
-      if(success){
-        Serial.println("Found a card!");
-        Serial.print("UID Length: ");Serial.print(uidLength, DEC);Serial.println(" bytes");
-        Serial.print("UID Value: ");
-        for (uint8_t i=0; i < uidLength; i++) 
-        {
-          Serial.print(" 0x");Serial.print(uid[i], HEX); 
-        }
-        Serial.println("");
-        // Wait 1 second before continuing
-        delay(1000);
-        
-        started = false;
-      
-        outputState = LOW;
-      } else {
-        Serial.println("Failed to find card!");
-      }
-    }else{
-      // shock not started and need to start now
-      if(false){
-        prevTime = millis();
-        outputState = HIGH;
-        while(millis() - prevTime <= 50){
-        }
 
-        started = true;
-      }
+int inByte = 0;
+
+void trigger() {
+  if (success) {
+    Serial.println("Found a card!");
+    //        Serial.print("UID Length: ");Serial.print(uidLength, DEC);Serial.println(" bytes");
+    //        Serial.print("UID Value: ");
+    //        for (uint8_t i=0; i < uidLength; i++)
+    //        {
+    //          Serial.print(" 0x");Serial.print(uid[i], HEX);
+    //        }
+    //        Serial.println("");
+    // Wait 1 second before continuing
+    delay(1000);
+
+    shockState = LOW;
+
+    //    Serial.available = 0;
+    //  } else {
+    //    Serial.println("Card not used yet!");
+
+    success = false;
+  }
+
+  //mock data
+  unsigned int available = Serial.available();
+
+  // shock not started and need to start now
+  if (available > 0) {
+    inByte = Serial.read();    // get incoming byte:
+    Serial.print("inByte: ");
+    Serial.println(inByte);
+
+    prevTime = millis();
+    shockState = HIGH;
+    unsigned long currentTime = millis();
+    while (currentTime - prevTime <= 50) {
+      currentTime = millis();
+      Serial.println("shockkkkkkk");
     }
-  
-  digitalWrite(outputPin, outputState);
-}
 
+    // Wait for an ISO14443A type cards (Mifare, etc.).  When one is found
+    // 'uid' will be populated with the UID, and uidLength will indicate
+    // if the uid is 4 bytes (Mifare Classic) or 7 bytes (Mifare Ultralight)
+    success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, &uid[0], &uidLength);
+
+  }
+
+  digitalWrite(shockPin, shockState);
+}
 
 
 void PrintVector(double *vData, uint16_t bufferSize, uint8_t scaleType)
