@@ -10,16 +10,16 @@
 
 // Display stuff on OLED
 //#include <Arduino.h>
-#include <U8g2lib.h>
-
+//#include <U8g2lib.h>
+#include <U8x8lib.h>
 
 arduinoFFT FFT = arduinoFFT(); /* Create FFT object */
 /*
 These values can be changed in order to evaluate the functions
 */
 #define CHANNEL A0
-const uint16_t samples = 64; //This value MUST ALWAYS be a power of 2
-const double samplingFrequency = 500; //Hz, must be less than 10000 due to ADC
+PROGMEM const unsigned int samples = 64; //This value MUST ALWAYS be a power of 2
+PROGMEM const int samplingFrequency = 500; //Hz, must be less than 10000 due to ADC
 
 unsigned int sampling_period_us;
 unsigned long microseconds;
@@ -65,8 +65,8 @@ Adafruit_PN532 nfc(PN532_IRQ, PN532_RESET);
 #endif
 
 // UTF8 OLED
-U8G2_SSD1306_128X64_NONAME_F_SW_I2C u8g2(U8G2_R0, /* clock=*/ SCL, /* data=*/ SDA, /* reset=*/ U8X8_PIN_NONE);   // All Boards without Reset of the Display
-
+//U8G2_SSD1306_128X64_NONAME_F_SW_I2C u8g2(U8G2_R0, /* clock=*/ SCL, /* data=*/ SDA, /* reset=*/ U8X8_PIN_NONE);   // All Boards without Reset of the Display
+U8X8_SSD1306_128X64_NONAME_SW_I2C u8x8(/* clock=*/ SCL, /* data=*/ SDA, /* reset=*/ U8X8_PIN_NONE);   // OLEDs without Reset of the Display
 
 unsigned const int shockPin = 9;
 int shockState = LOW;
@@ -74,10 +74,13 @@ int shockState = LOW;
 void setup()
 {
 
-  u8g2.begin();
-  u8g2.enableUTF8Print();		// enable UTF8 support for the Arduino print() function
+  u8x8.begin();
+  u8x8.setPowerSave(0);
+  u8x8.setFont(u8x8_font_chroma48medium8_r);
+  //  u8g2.begin();
+  //  u8g2.enableUTF8Print();		// enable UTF8 support for the Arduino print() function
   // u8g2.setFont(u8g2_font_6x10_tf);  // use font
-  u8g2.setFontDirection(0); // set font print direction
+  //  u8g2.setFontDirection(0); // set font print direction
 
   
   #ifndef ESP8266
@@ -88,17 +91,17 @@ void setup()
 
   uint32_t versiondata = nfc.getFirmwareVersion();
   if (! versiondata) {
-    Serial.print("Didn't find PN53x board");
+    Serial.print(F("Didn't find PN53x board"));
     while (1); // halt
   }
   
   // Got ok data, print it out!
-  Serial.print("Found chip PN5");
-  Serial.println((versiondata>>24) & 0xFF, HEX); 
-  Serial.print("Firmware ver. ");
-  Serial.print((versiondata>>16) & 0xFF, DEC); 
-  Serial.print('.');
-  Serial.println((versiondata>>8) & 0xFF, DEC);
+  /* Serial.print(F("Found chip PN5")); */
+  /* Serial.println((versiondata>>24) & 0xFF, HEX);  */
+  /* Serial.print(F("Firmware ver). "); */
+  /* Serial.print((versiondata>>16) & 0xFF, DEC);  */
+  /* Serial.print('.'); */
+  /*F( Serial.println((versiondata>>8) & 0xFF, DEC)); */
   
   // Set the max number of retry attempts to read from a card
   // This prevents us from waiting forever for a card, which is
@@ -108,7 +111,7 @@ void setup()
   // configure board to read RFID tags
   nfc.SAMConfig();
   
-  Serial.println("Waiting for an ISO14443A card");
+  Serial.println(F("Waiting for an ISO14443A card"));
   
   pinMode(shockPin,OUTPUT);
 
@@ -119,7 +122,7 @@ void setup()
   }
   
   Serial.begin(115200);
-  Serial.println("Ready");
+  Serial.println(F("Ready"));
 }
 
 double x;
@@ -184,14 +187,17 @@ void loop() {
   // if the uid is 4 bytes (Mifare Classic) or 7 bytes (Mifare Ultralight)
 
   if (success) {
-    Serial.println("Found a card!");
+    Serial.println(F("Found a card!"));
     available = 0;
 
-    u8g2.clearBuffer(); // clear screen
-    u8g2.setCursor(0, 15); // set printing position
-    u8g2.print("UID Length (bytes): "); // set print content
-    u8g2.setCursor(78, 15);
-    u8g2.print(uidLength, DEC);
+    /* u8g2.clearBuffer(); // clear screen */
+    /* u8g2.setCursor(0, 15); // set printing position */
+    /* u8g2.print(F("UID Length (bytes): ")); // set print content */
+    /* u8g2.setCursor(78, 15); */
+    /* u8g2.print(uidLength, DEC); */
+
+    
+    u8x8.drawString(0,0,uidLength);
     
     //        Serial.print("UID Value: ");
     //        for (uint8_t i=0; i < uidLength; i++)
@@ -201,7 +207,7 @@ void loop() {
     //        Serial.println("");
     // Wait 1 second before continuing
 
-    u8g2.sendBuffer(); // display screen
+    //u8g2.sendBuffer(); // display screen
     
 
     shockState = LOW;
@@ -230,8 +236,9 @@ void trigger() {
   // SHOCK YOU!
   if (available > 0) {
     inByte = Serial.read();    // get incoming byte:
-    Serial.print("inByte: ");
-    Serial.println(inByte);
+    /* Serial.print("LOL"); */
+    /* Serial.print(F("inByte: ")); */
+    /* Serial.println(inByte); */
 
     prevTime = millis();
     shockState = HIGH;
@@ -240,7 +247,7 @@ void trigger() {
     
     tone(shockPin, 1000);
 
-    Serial.println("Shock!");
+    Serial.println(F("Shock!"));
     success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, &uid[0], &uidLength);
     /* while (currentTime - prevTime <= 5000) { */
     /*   currentTime = millis(); */
