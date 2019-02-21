@@ -9,15 +9,8 @@
 #include <Adafruit_PN532.h>
 
 // Display stuff on OLED
-#include <Arduino.h>
+//#include <Arduino.h>
 #include <U8g2lib.h>
-
-#ifdef U8X8_HAVE_HW_SPI
-#include <SPI.h>
-#endif
-#ifdef U8X8_HAVE_HW_I2C
-#include <Wire.h>
-#endif
 
 
 arduinoFFT FFT = arduinoFFT(); /* Create FFT object */
@@ -71,12 +64,22 @@ Adafruit_PN532 nfc(PN532_IRQ, PN532_RESET);
    #define Serial SerialUSB
 #endif
 
+// UTF8 OLED
+U8G2_SSD1306_128X64_NONAME_F_SW_I2C u8g2(U8G2_R0, /* clock=*/ SCL, /* data=*/ SDA, /* reset=*/ U8X8_PIN_NONE);   // All Boards without Reset of the Display
 
-const int shockPin = 9;
+
+unsigned const int shockPin = 9;
 int shockState = LOW;
 
 void setup()
 {
+
+  u8g2.begin();
+  u8g2.enableUTF8Print();		// enable UTF8 support for the Arduino print() function
+  // u8g2.setFont(u8g2_font_6x10_tf);  // use font
+  u8g2.setFontDirection(0); // set font print direction
+
+  
   #ifndef ESP8266
     while (!Serial); // for Leonardo/Micro/Zero
   #endif
@@ -90,9 +93,12 @@ void setup()
   }
   
   // Got ok data, print it out!
-  Serial.print("Found chip PN5"); Serial.println((versiondata>>24) & 0xFF, HEX); 
-  Serial.print("Firmware ver. "); Serial.print((versiondata>>16) & 0xFF, DEC); 
-  Serial.print('.'); Serial.println((versiondata>>8) & 0xFF, DEC);
+  Serial.print("Found chip PN5");
+  Serial.println((versiondata>>24) & 0xFF, HEX); 
+  Serial.print("Firmware ver. ");
+  Serial.print((versiondata>>16) & 0xFF, DEC); 
+  Serial.print('.');
+  Serial.println((versiondata>>8) & 0xFF, DEC);
   
   // Set the max number of retry attempts to read from a card
   // This prevents us from waiting forever for a card, which is
@@ -118,18 +124,18 @@ void setup()
 
 double x;
 
-int occupied = 0;
+char occupied = 0;
 
 unsigned long prevTime;
 
 uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };  // Buffer to store the returned UID
 uint8_t uidLength;        // Length of the UID (4 or 7 bytes depending on ISO14443A card type)
 
-bool success = false;
+char success = 0;
 
-//bool started = false;
+unsigned int available = Serial.available();
 
-void loop() {
+void loop() {  
   /*SAMPLING*/
   if(!occupied){
     for(int i=0; i<samples; i++) {
@@ -169,12 +175,45 @@ void loop() {
   Serial.println(x, 6); //Print out what frequency is the most dominant.
   //while(1); /* Run Once */
 
+ 
+  
   //----------------NFC
 
-    // Wait for an ISO14443A type cards (Mifare, etc.).  When one is found
-    // 'uid' will be populated with the UID, and uidLength will indicate
-    // if the uid is 4 bytes (Mifare Classic) or 7 bytes (Mifare Ultralight)
+  // Wait for an ISO14443A type cards (Mifare, etc.).  When one is found
+  // 'uid' will be populated with the UID, and uidLength will indicate
+  // if the uid is 4 bytes (Mifare Classic) or 7 bytes (Mifare Ultralight)
 
+  if (success) {
+    Serial.println("Found a card!");
+    available = 0;
+
+    u8g2.clearBuffer(); // clear screen
+    u8g2.setCursor(0, 15); // set printing position
+    u8g2.print("UID Length (bytes): "); // set print content
+    u8g2.setCursor(78, 15);
+    u8g2.print(uidLength, DEC);
+    
+    //        Serial.print("UID Value: ");
+    //        for (uint8_t i=0; i < uidLength; i++)
+    //        {
+    //          Serial.print(" 0x");Serial.print(uid[i], HEX);
+    //        }
+    //        Serial.println("");
+    // Wait 1 second before continuing
+
+    u8g2.sendBuffer(); // display screen
+    
+
+    shockState = LOW;
+
+    //    Serial.available = 0;
+    //  } else {
+    //    Serial.println("Card not used yet!");
+
+    success = false;
+      
+    //delay(1000);
+  }
 
   //if triggers the electricity then
   trigger();
@@ -184,30 +223,8 @@ void loop() {
 int inByte = 0;
 
 void trigger() {
-  if (success) {
-    Serial.println("Found a card!");
-    
-    //        Serial.print("UID Length: ");Serial.print(uidLength, DEC);Serial.println(" bytes");
-    //        Serial.print("UID Value: ");
-    //        for (uint8_t i=0; i < uidLength; i++)
-    //        {
-    //          Serial.print(" 0x");Serial.print(uid[i], HEX);
-    //        }
-    //        Serial.println("");
-    // Wait 1 second before continuing
-    delay(1000);
-
-    shockState = LOW;
-
-    //    Serial.available = 0;
-    //  } else {
-    //    Serial.println("Card not used yet!");
-
-    success = false;
-  }
 
   //mock data
-  unsigned int available = Serial.available();
 
   // shock not started and need to start now
   // SHOCK YOU!
@@ -235,42 +252,40 @@ void trigger() {
     // 'uid' will be populated with the UID, and uidLength will indicate
     // if the uid is 4 bytes (Mifare Classic) or 7 bytes (Mifare Ultralight)
 
-
-
   }
   //  digitalWrite(shockPin, shockState);
   
 }
 
 
-void PrintVector(double *vData, uint16_t bufferSize, uint8_t scaleType)
-{
-  for (uint16_t i = 0; i < bufferSize; i++)
-  {
-    double abscissa;
-    /* Print abscissa value */
-    switch (scaleType)
-    {
-      case SCL_INDEX:
-        abscissa = i;
-        break;
-      case SCL_TIME:
-        abscissa = ((i * 1.0) / samplingFrequency);
-        break;
-      case SCL_FREQUENCY:
-        abscissa = ((i * 1.0 * samplingFrequency) / samples);
-        break;
-    }
-    if(scaleType==SCL_INDEX){
-      Serial.print(abscissa);
-    }else if(scaleType==SCL_TIME){
-      Serial.print(abscissa, 6);
-    }else if(scaleType==SCL_FREQUENCY){
-      Serial.print(abscissa, 6);
-      Serial.print("Hz");
-    }
-    Serial.print(" ");
-    Serial.println(vData[i], 4);
-  }
-  Serial.println();
-}
+/* void PrintVector(double *vData, uint16_t bufferSize, uint8_t scaleType){ */
+  
+/*   for (uint16_t i = 0; i < bufferSize; i++) */
+/*   { */
+/*     double abscissa; */
+/*     /\* Print abscissa value *\/ */
+/*     switch (scaleType) */
+/*     { */
+/*       case SCL_INDEX: */
+/*         abscissa = i; */
+/*         break; */
+/*       case SCL_TIME: */
+/*         abscissa = ((i * 1.0) / samplingFrequency); */
+/*         break; */
+/*       case SCL_FREQUENCY: */
+/*         abscissa = ((i * 1.0 * samplingFrequency) / samples); */
+/*         break; */
+/*     } */
+/*     if(scaleType==SCL_INDEX){ */
+/*       Serial.print(abscissa); */
+/*     }else if(scaleType==SCL_TIME){ */
+/*       Serial.print(abscissa, 6); */
+/*     }else if(scaleType==SCL_FREQUENCY){ */
+/*       Serial.print(abscissa, 6); */
+/*       Serial.print("Hz"); */
+/*     } */
+/*     Serial.print(" "); */
+/*     Serial.println(vData[i], 4); */
+/*   } */
+/*   Serial.println(); */
+/* } */
