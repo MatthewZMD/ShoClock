@@ -9,7 +9,7 @@
 #include <Adafruit_PN532.h>
 
 // Display stuff on OLED
-//#include <Arduino.h>
+#include <Arduino.h>
 //#include <U8g2lib.h>
 #include <U8x8lib.h>
 
@@ -91,7 +91,8 @@ void setup()
 
   uint32_t versiondata = nfc.getFirmwareVersion();
   if (! versiondata) {
-    Serial.print(F("Didn't find PN53x board"));
+    Serial.print(F("PN53X NOTFOUND"));
+    u8x8.drawString(0,0,"PN53X NOTFOUND");
     while (1); // halt
   }
   
@@ -111,7 +112,8 @@ void setup()
   // configure board to read RFID tags
   nfc.SAMConfig();
   
-  Serial.println(F("Waiting for an ISO14443A card"));
+  Serial.println(F("SCAN ISO14443A"));
+  u8x8.drawString(0,0,"SCAN ISO14443A");
   
   pinMode(shockPin,OUTPUT);
 
@@ -122,7 +124,8 @@ void setup()
   }
   
   Serial.begin(115200);
-  Serial.println(F("Ready"));
+  Serial.println(F("RDY"));
+  u8x8.drawString(0,1,"RDY");
 }
 
 double x;
@@ -138,7 +141,7 @@ char success = 0;
 
 unsigned int available = Serial.available();
 
-void loop() {  
+void loop() {
   /*SAMPLING*/
   if(!occupied){
     for(int i=0; i<samples; i++) {
@@ -176,6 +179,9 @@ void loop() {
   //PrintVector(vR, (samples >> 1), SCL_FREQUENCY);
   x = FFT.MajorPeak(vR, samples, samplingFrequency);
   Serial.println(x, 6); //Print out what frequency is the most dominant.
+  char *  xStr;
+  itoa(x, xStr, 10);
+  u8x8.drawString(0,2,xStr);
   //while(1); /* Run Once */
 
  
@@ -187,7 +193,8 @@ void loop() {
   // if the uid is 4 bytes (Mifare Classic) or 7 bytes (Mifare Ultralight)
 
   if (success) {
-    Serial.println(F("Found a card!"));
+    Serial.println(F("CARD DETECTED"));
+    u8x8.drawString(0,3,"CARD DETECTED");
     available = 0;
 
     /* u8g2.clearBuffer(); // clear screen */
@@ -197,7 +204,7 @@ void loop() {
     /* u8g2.print(uidLength, DEC); */
 
     
-    u8x8.drawString(0,0,uidLength);
+    u8x8.drawString(0,4,uidLength);
     
     //        Serial.print("UID Value: ");
     //        for (uint8_t i=0; i < uidLength; i++)
@@ -248,6 +255,7 @@ void trigger() {
     tone(shockPin, 1000);
 
     Serial.println(F("Shock!"));
+    u8x8.drawString(0,5,"SHOCK!");
     success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, &uid[0], &uidLength);
     /* while (currentTime - prevTime <= 5000) { */
     /*   currentTime = millis(); */
